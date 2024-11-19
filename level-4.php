@@ -1,5 +1,14 @@
 <?php
+define('MAX_FILE_SIZE', 104857600); // 100MB in bytes
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['files'])) {
+    foreach ($_FILES['files']['tmp_name'] as $key => $tmp_name) {
+        if ($_FILES['files']['size'][$key] > MAX_FILE_SIZE) {
+            echo json_encode(['status' => 'fail', 'message' => 'File exceeds the maximum allowed size of 100MB.']);
+            exit;
+        }
+    }
+
     $compressionLevels = [
         'No Compression' => 0,
         'Minimal Compression' => 1,
@@ -28,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['files'])) {
 
         echo json_encode(['status' => 'success', 'zipName' => $zipName]);
     } else {
-        echo json_encode(['status' => 'fail']);
+        echo json_encode(['status' => 'fail', 'message' => 'Failed to create ZIP file.']);
     }
     exit;
 }
@@ -51,6 +60,7 @@ if (isset($_GET['download'])) {
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Create ZIP File</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -66,12 +76,19 @@ if (isset($_GET['download'])) {
             height: 50px;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
         <h1 class="text-2xl font-bold mb-4">Create ZIP File</h1>
@@ -114,9 +131,26 @@ if (isset($_GET['download'])) {
     </div>
 
     <script>
+        const MAX_FILE_SIZE = 104857600; // 100MB in bytes
+
         function validateAndUpload() {
             const fileInput = document.querySelector('input[name="files[]"]');
-            if (fileInput.files.length === 0) {
+            let valid = true;
+
+            for (let i = 0; i < fileInput.files.length; i++) {
+                if (fileInput.files[i].size > MAX_FILE_SIZE) {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (!valid) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Salah satu file melebihi ukuran maksimum 100MB!',
+                });
+            } else if (fileInput.files.length === 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -149,16 +183,28 @@ if (isset($_GET['download'])) {
                             <a href="?download=${result.zipName}" class="text-blue-500 underline" onclick="deleteFile('${result.zipName}')">Download ZIP</a>
                         `;
                     } else {
-                        document.getElementById('statusMessage').innerHTML = 'Failed to create ZIP file.';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: result.message || 'Failed to create ZIP file.',
+                        });
                     }
                 } else {
-                    document.getElementById('statusMessage').innerHTML = 'An error occurred while uploading.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while uploading.',
+                    });
                 }
             };
 
             xhr.onerror = function() {
                 document.getElementById('loader').style.display = 'none';
-                document.getElementById('statusMessage').innerHTML = 'An error occurred while uploading.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while uploading.',
+                });
             };
 
             xhr.send(formData);
@@ -171,4 +217,5 @@ if (isset($_GET['download'])) {
         }
     </script>
 </body>
+
 </html>
