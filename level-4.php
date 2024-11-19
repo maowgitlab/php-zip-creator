@@ -54,6 +54,7 @@ if (isset($_GET['download'])) {
 <head>
     <title>Create ZIP File</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <style>
         #loader {
             display: none;
@@ -106,13 +107,26 @@ if (isset($_GET['download'])) {
                     <strong>Maximum Compression:</strong> Kompresi maksimal, ukuran file terkecil.
                 </p>
             </div>
-            <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="uploadFiles()">Create ZIP</button>
+            <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="validateAndUpload()">Create ZIP</button>
         </form>
         <div id="loader"></div>
         <div id="statusMessage" class="mt-4 text-center"></div>
     </div>
 
     <script>
+        function validateAndUpload() {
+            const fileInput = document.querySelector('input[name="files[]"]');
+            if (fileInput.files.length === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Silakan pilih file terlebih dahulu!',
+                });
+            } else {
+                uploadFiles();
+            }
+        }
+
         function uploadFiles() {
             const form = document.getElementById('uploadForm');
             const formData = new FormData(form);
