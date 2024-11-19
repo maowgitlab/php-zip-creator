@@ -66,25 +66,19 @@ if (isset($_GET['download'])) {
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <style>
-        #loader {
+        #progressBar {
             display: none;
-            margin: 0 auto;
-            border: 5px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 5px solid #3498db;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
+            width: 100%;
+            background-color: #f3f3f3;
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+        #progressBar div {
+            width: 0;
+            height: 24px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 24px;
+            color: white;
         }
     </style>
 </head>
@@ -126,7 +120,10 @@ if (isset($_GET['download'])) {
             </div>
             <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="validateAndUpload()">Create ZIP</button>
         </form>
-        <div id="loader"></div>
+        <div id="progressBar" class="mt-4">
+            <div>0%</div>
+        </div>
+        <span id="progressText" class="text-red-500"></span>
         <div id="statusMessage" class="mt-4 text-center"></div>
     </div>
 
@@ -165,19 +162,36 @@ if (isset($_GET['download'])) {
             const form = document.getElementById('uploadForm');
             const formData = new FormData(form);
 
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('statusMessage').innerHTML = 'Uploading...';
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressText.textContent = 'Compressing. Please wait...';
+            progressBar.style.display = 'block';
+            progressBar.firstElementChild.style.width = '0%';
+            progressBar.firstElementChild.textContent = '0%';
+
+            document.getElementById('statusMessage').innerHTML = '';
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '', true);
 
-            xhr.onload = function() {
-                document.getElementById('loader').style.display = 'none';
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    progressBar.firstElementChild.style.width = percentComplete.toFixed(2) + '%';
+                    progressBar.firstElementChild.textContent = percentComplete.toFixed(2) + '%';
+                }
+            };
 
+            xhr.onload = function() {
                 if (xhr.status === 200) {
                     const result = JSON.parse(xhr.responseText);
 
                     if (result.status === 'success') {
+                        progressBar.style.display = 'block';
+                        progressText.style.display = 'none';
+                        progressBar.firstElementChild.style.width = '100%';
+                        progressBar.firstElementChild.textContent = 'Complete!';
+
                         document.getElementById('statusMessage').innerHTML = `
                             File uploaded and compressed. 
                             <a href="?download=${result.zipName}" class="text-blue-500 underline" onclick="deleteFile('${result.zipName}')">Download ZIP</a>
@@ -186,8 +200,9 @@ if (isset($_GET['download'])) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: result.message || 'Failed to create ZIP file.',
+                            text: 'An error occurred while uploading.',
                         });
+                        progressBar.style.display = 'none';
                     }
                 } else {
                     Swal.fire({
@@ -195,11 +210,12 @@ if (isset($_GET['download'])) {
                         title: 'Error',
                         text: 'An error occurred while uploading.',
                     });
+                    progressBar.style.display = 'none';
                 }
             };
 
             xhr.onerror = function() {
-                document.getElementById('loader').style.display = 'none';
+                progressBar.style.display = 'none';
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
